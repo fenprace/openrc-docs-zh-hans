@@ -136,7 +136,7 @@ pidfile="/run/${RC_SVCNAME}.pid"
 
 - procname
 
-OpenRC 会利用 `procname`，通过比较运行中进程的名字，来查找你的守护进程。这样做并不是很可靠。不过你的守护进程本来就不应该只后台运行，而不创建 PID 文件。下面的例子是 [CA NetConsole Daemon](https://oss.oracle.com/) 服务脚本的一部分：
+OpenRC 会利用 `procname`，通过比较运行中进程的名字，来查找你的守护进程，这样做并不是很可靠。不过你的守护进程本来就不应该只后台运行，而不创建 PID 文件。下面的例子是 [CA NetConsole Daemon](https://oss.oracle.com/) 服务脚本的一部分：
 
 ```sh
 command="/usr/sbin/cancd"
@@ -156,3 +156,21 @@ procname="cancd"
 2. 如果进程不在后台运行（或者提供了让它在前台运行的选项），并且不创建 PID 文件，那就用 `command_background=true` 和 `pidfile`。
 3. 如果进程在后台运行，但是不创建 PID 文件，用 `procname` 代替 `pidfile`，但如果你的进程提供了让它在前台运行的选项，那你应该让它在前台运行（然后按照上一点的方法处理它）。
 4. 最后一种情况，尽管这样做没什么意义，你的进程不在后台运行但创建了 PID 文件。你应该禁用或无效化该进程的 PID 文件（或者把 PID 文件写入一个无用的路径），然后用 `command_background=true`。
+
+## 重载你守护进程的配置
+
+许多守护进程都会响应信号来重载配置。假设你的进程接收到 `SIGHUP` 就重载配置，可以增加一个“reload”命令，来让你的服务脚本具有重载配置功能。首先，在服务脚本里声明这个命令。
+
+```sh
+extra_started_commands="reload"
+```
+
+我们用 `extra_started_commands` 而不是 `extra_commands`，因为“reload”只在进程运行时（也就是启动后）有效。现在可以用 start-stop-daemon 发送信号到对应的进程（假设你已经在服务脚本里定义了 `pidfile`）：
+
+```sh
+reload() {
+  ebegin "Reloading ${RC_SVCNAME}"
+  start-stop-daemon --signal HUP --pidfile "${pidfile}"
+  eend $?
+}
+```

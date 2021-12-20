@@ -27,7 +27,7 @@ OpenRC 已经于 busybox sh、ash、dash、bash、mksh、zsh 和其他的 shell 
 ```
 extra_commands="checkconfig"
 checkconfig() {
-	doSomething
+  doSomething
 }
 ```
 
@@ -47,9 +47,9 @@ checkconfig() {
 
 ```sh
 depend() {
-	need net
-	use dns logger netmount
-	want coolservice
+  need net
+  use dns logger netmount
+  want coolservice
 }
 ```
 
@@ -157,7 +157,7 @@ procname="cancd"
 3. 如果进程在后台运行，但是不创建 PID 文件，用 `procname` 代替 `pidfile`，但如果你的进程提供了让它在前台运行的选项，那你应该让它在前台运行（然后按照上一点的方法处理它）。
 4. 最后一种情况，尽管这样做没什么意义，你的进程不在后台运行但创建了 PID 文件。你应该禁用或无效化该进程的 PID 文件（或者把 PID 文件写入一个无用的路径），然后用 `command_background=true`。
 
-## 重载你守护进程的配置
+## 重载守护进程的配置
 
 许多守护进程都会响应信号来重载配置。假设你的进程接收到 `SIGHUP` 就重载配置，可以增加一个“reload”命令，来让你的服务脚本具有重载配置功能。首先，在服务脚本里声明这个命令。
 
@@ -169,6 +169,45 @@ extra_started_commands="reload"
 
 ```sh
 reload() {
+  ebegin "Reloading ${RC_SVCNAME}"
+  start-stop-daemon --signal HUP --pidfile "${pidfile}"
+  eend $?
+}
+```
+
+## 不要在配置损坏时重启 / 重载
+
+这是一个十分常见的情景：用户启动了守护进程，修改配置文件，然后再尝试重启进程。如果修改后的配置文件有错误，会导致进程停止后不能再次启动（由于配置文件错误）。编写一个检查配置文件的函数，配合 `start_pre` 和 `stop_pre` 钩子，就可以预防这种情况发生。
+
+```sh
+checkconfig() {
+  # 检查配置文件
+}
+
+start_pre() {
+  # 如果不是重启，在启动进程前检查配置文件的有效性（相比盲目的启动进程，
+  # 这样可以生成更好的错误信息）
+  #
+  # 反之，如果这 *是* 一次重启，那么 stop_pre 函数会确保配置文件可用，
+  # 我们没必要再检查一遍。
+  if [ "${RC_CMD}" != "restart" ] ; then
+    checkconfig || return $?
+  fi
+}
+
+stop_pre() {
+  # 如果是重启，在停止进程前检查配置文件的有效性。
+  if [ "${RC_CMD}" = "restart" ] ; then
+      checkconfig || return $?
+  fi
+}
+```
+
+要防止 _重载_ 损坏的配置文件，很简单：
+
+```sh
+reload() {
+  checkconfig || return $?
   ebegin "Reloading ${RC_SVCNAME}"
   start-stop-daemon --signal HUP --pidfile "${pidfile}"
   eend $?

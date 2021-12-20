@@ -213,3 +213,30 @@ reload() {
   eend $?
 }
 ```
+
+## 只有 root 用户可以写入 PID 文件
+
+只能有 _root_ 一个用户可以写入 PID 文件，也就是说 PID 文件所在的文件夹拥有者必须是 _root_。在 Linux 中，这个文件夹一般是 /run，在其他操作系统中一般是 /var/run。
+
+一些守护进程以非特权用户运行，然后（以非特权用户）在 `/var/run/foo/foo.pid` 之类的路径下创建自己的 PID 文件。这使得非特权用户能够杀死 _root_ 进程，因为服务停止时，_root_ 一般会向 PID 文件（在这种状况下，这个文件由非特权用户控制）的内容发送一个 SIGTERM 信号。该问题的预兆之一是用 `checkpath` 来设置 PID 文件所在目录的所有权，比如：
+
+```sh
+# 别这么做 别这么做 别这么做 别这么做
+start_pre() {
+  # 确保 pidfile 所在的目录可以被 foo 用户 / 用户组写入
+  checkpath --directory --mode 0700 --owner foo:foo "/var/run/foo"
+}
+# 别这么做 别这么做 别这么做 别这么做
+```
+
+如果 _foo_ 用户拥有 `/var/run/foo`，那么它可以随心所欲地修改 `/var/run/foo/foo.pid` 文件。即使 _root_ 拥有 PID 文件，_foo_ 用户还是可以删除 _root_ 所拥有的 PID 文件，再创建一个属于 _foo_ 的文件取而代之。要避免安全问题，PID 文件必须由 _root_ 创建，且必须在 _root_ 拥有的文件夹中。如果你的守护进程负责 fork 到后台并创建 PID 文件，但是 PID 文件却由非特权运行时用户所拥有，这可能是软件上游的问题。
+
+只要作为 _root_ 创建了 PID 文件（在放弃特权前），就可以直接把它写入 _root_ 拥有的目录中去。比如，_foo_ 守护进程想要写入 `/var/run/foo.pid`，不需要 checkpath。注意：技术上，只要 _root_ 拥有 PID 文件和 PID 文件所在的目录，完全可以使用类似于 `/var/run/foo/foo.pid` 的目录结构。
+
+理想情况下（），上游应该集成你的服务脚本，合适的 PID 文件目录应该由构建系统，例如：
+
+```sh
+pidfile="@piddir@/${RC_SVCNAME}.pid"
+```
+
+正面例子之一是这个 [Nagios 核心服务脚本](https://github.com/NagiosEnterprises/nagioscore/blob/master/openrc-init.in)，在构建时指定了 PID 文件的完整路径。

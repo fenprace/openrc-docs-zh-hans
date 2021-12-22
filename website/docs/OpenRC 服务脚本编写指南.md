@@ -4,7 +4,6 @@
 
 - 翻译状态：校对润色中
 - 最后修改日期：2021-12-22
-- [本文编辑历史](https://github.com/fenprace/openrc-docs-zh-hans/commits/master/OpenRC%20%E6%9C%8D%E5%8A%A1%E8%84%9A%E6%9C%AC%E7%BC%96%E5%86%99%E6%8C%87%E5%8D%97.md)
 - [翻译时的原文](https://github.com/OpenRC/openrc/blob/32aeb7407bf5cdc354694b73f4c36376922f7c05/service-script-guide.md)
 - [原文最新状态](https://github.com/OpenRC/openrc/blob/master/service-script-guide.md)
 - [原文编辑历史](https://github.com/OpenRC/openrc/commits/master/service-script-guide.md)

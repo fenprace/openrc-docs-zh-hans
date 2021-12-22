@@ -1,3 +1,8 @@
+---
+sidebar_position: 1
+slug: /
+---
+
 # OpenRC 中文文档
 
 OpenRC 是一个基于依赖的 init 系统。Apline Linux、Gentoo Linux 等 Linux 发行版都将其作为默认的 init 系统。

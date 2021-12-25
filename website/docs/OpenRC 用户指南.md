@@ -95,3 +95,31 @@ start-up-daemon 负责启动守护进程、让进程进入后台运行、创建 
 这个文件管理 OpenRC 的默认配置，还包含了服务脚本的配置变量的示例。
 
 其中就有 `rc_parallel`（用于并行启动），`rc_log`（在文件中记录引导信息）等等。
+
+## ulimit 和 CGroups
+
+单个服务的 `ulimit` 和 `nice` 值可以通过 `rc_ulimit` 变量设置。
+
+在 Linux 下，OpenRC 也可以使用 cgroups 管理进程。配置好内核后，用 /etc/rc.conf 中的 `rc_cgroup_mode` 控制 cgroups 版本，可以选择 cgroups v1、v2 或是两者一起使用，默认配置是两者一起使用。
+
+通过服务的 `conf.d` 可以限制单个服务的资源使用。详情请参考默认 /etc/rc.conf 中的 `LINUX CGROUPS RESOURCE MANAGEMENT` 一节。
+
+## 处理孤儿进程
+
+系统有时会进入这样一种状态：部分服务变成了孤儿进程。比如说，你用 supervise-daemon 监视服务，然后 supervise-daemon 因为不明原因崩溃了。各种系统上处理这种情况的方式不尽相同。
+
+在启用了 cgroups 的 Linux 系统上，所有服务都有一个 cgroup_cleanup 命令，你可以在服务停止时手动运行它：
+
+`# rc-service someservice cgroup_cleanup`
+
+将 `rc_cgroup_cleanup` 设置为 yes，可以使 OpenRC 在服务停止时自动执行 cgroup_cleanup。
+
+## 缓存
+
+为了更好的性能，OpenRC 缓存所有服务的解析前的元数据。缓存默认储存在 `/${RC_SVCDIR}/cache`。
+
+OpenRC 用 `mtime` 检查缓存是否过期。OpenRC 会在服务脚本改变时重载相关的文件并更新缓存。
+
+## 方便函数
+
+OpenRC 包装了 libeinfo 中常用的输出函数，这允许 OpenRC 打印出彩色消息。要在服务脚本中获得一致的输出，请在服务脚本中用 ebegin/eend 输出消息。
